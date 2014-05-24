@@ -1,0 +1,162 @@
+/*************** calcWeights ********************
+         * Calculate weights of each DOCUMENT
+         * ***********************************************
+         */
+        public void calcWeights(string docNum)
+        {
+
+            ArrayList weights = new ArrayList();
+            SortedDictionary<string, double> temp2 = new SortedDictionary<string, double>(); //for query
+
+            foreach (KeyValuePair<string, Term> entry in termDict)
+            {
+                ArrayList temp = new ArrayList();
+
+                //ignore all the terms that are not in the query for calculation:- reduces time for unwanted similarities.
+                if (query.ContainsKey((entry.Key)))
+                {
+                    foreach (KeyValuePair<string, DocumentNode> doc in entry.Value.getDocumentHalf())
+                    {
+
+                        if (doc.Value.documentID.Equals(docNum))
+                        {
+                           temp.Add(doc.Value.idf);
+                            weights.Add(doc.Value.weight);
+                        }
+
+                    }
+
+                    if (query.ContainsKey(entry.Key) == false)
+                        temp2.Add(entry.Key, 0);
+                    else
+                        temp2.Add(entry.Key, query[entry.Key]);
+                }
+            }
+
+            qDocs.Add(docNum, temp2); //document # along with query term frequency.
+            DocsWeights.Add(docNum, weights);
+
+            //get doc scalars >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+            double sum = 0;
+            foreach (double weight in weights)
+            {
+                sum += (weight * weight);
+            }
+
+            sum = Math.Sqrt(sum);
+            doc_norm.Add(docNum, sum);
+            //<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+        }
+
+        /*************** calcQWeights ********************
+         * Calculate query weights
+         * ***********************************************
+         */
+        public void calcQWeights(string docNum)
+        {
+
+            ArrayList qweights = new ArrayList();
+            foreach (KeyValuePair<string, double> entry in query)
+            {
+                double idf = Math.Log(3204 / termDict[entry.Key].getDocumentHalf().Count);
+                double wtf = 0;
+
+                if (entry.Value > 0)
+                {
+                    wtf = (1 + Math.Log(entry.Value));
+                }
+                qweights.Add(wtf * idf);
+
+            }
+
+            QWeights.Add(docNum, qweights);
+
+
+
+            double sum = 0;
+            //calculate query scalar
+            foreach (double weight in qweights)
+            {
+                sum += (weight * weight);
+            }
+
+            sum = Math.Sqrt(sum); // square-root the sum
+            q_norm.Add(docNum, sum); // add the sum to the q_norm dictionary with docNum as key.
+        }
+
+
+        /*************** calcNWeights ********************
+         * Calculate  NORMALIZED weights for each document
+         * ***********************************************
+         */
+
+        public void calcNWeights()
+        {
+            foreach (KeyValuePair<string, ArrayList> entry in DocsWeights)
+            {
+                ArrayList temp = new ArrayList();
+                foreach (double weight in entry.Value)
+                {
+                    System.Console.WriteLine(weight / doc_norm[entry.Key]);
+
+                    temp.Add((weight / doc_norm[entry.Key]));
+                }
+                DocsNWeights.Add(entry.Key, temp);
+            }
+        }
+
+
+        /*************** calcQNWeights ********************
+       * Calculate NORMALIZED weights for QUERY
+       * ***********************************************
+       */
+        public void calcQNWeights()
+        {
+            foreach (KeyValuePair<string, ArrayList> entry in QWeights)
+            {
+                ArrayList temp = new ArrayList();
+                foreach (double weight in entry.Value)
+                {
+                    System.Console.WriteLine(weight / q_norm[entry.Key]);
+
+                    temp.Add((weight / q_norm[entry.Key]));
+
+                }
+
+
+                QNWeights.Add(entry.Key, temp);
+
+            }
+
+        }
+
+        /*************** calcSim ********************
+      * using nweights for document and query (calculated using calcQNWeights() and calcWeights())
+      * ***********************************************
+      */
+        public void calcSim()
+        {
+
+            foreach (KeyValuePair<string, ArrayList> entry in DocsWeights)
+            {
+                int count = 0;
+                double sim = 0;
+                ArrayList qnw = new ArrayList();
+                qnw = QNWeights[entry.Key]; 
+
+                foreach (double nw in entry.Value)
+                {
+                    object o = qnw[count];
+
+                    sim += ((double)o * nw);
+                    count++;
+                }
+                docSim.Add(entry.Key, sim);
+            }
+        }
+
+        public string getOutputText() {
+
+            return outputText;
+        }
